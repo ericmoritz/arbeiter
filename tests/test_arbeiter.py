@@ -1,5 +1,5 @@
 import unittest
-from arbeiter import Job
+from arbeiter import Job, Spout
 
 
 class TestJob(unittest.TestCase):
@@ -77,3 +77,27 @@ class TestJob(unittest.TestCase):
         # Ensure the data was put back in the queue
         self.assertEqual(job.peek("in"), "Test")
         
+
+class TestSpout(unittest.TestCase):
+    def test(self):
+        s = Spout(["localhost:22133"], "in",
+                  map(str, range(3)))
+
+        # Feed 3 items into the "in" queue
+        s.run()
+
+        result_list = []
+        def handler(job, data):
+            result_list.append(data)
+
+        # Define a job that reads items off the "in" queue
+        job = Job(["localhost:22133"], "in", handler)
+
+        # Handle our three items
+        job.handle_one()
+        job.handle_one()
+        job.handle_one()
+
+        # The handler should of pushed the three items onto the result_list
+        self.assertEqual(result_list,
+                         ["0", "1", "2"])

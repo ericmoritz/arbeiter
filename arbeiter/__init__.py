@@ -69,3 +69,15 @@ class Job(object):
     def run(self):
         while True:
             self.handle_one()
+
+
+class Spout(object):
+    def __init__(self, servers, queue, generator):
+        self.servers   = servers
+        self.queue     = queue
+        self.client    = memcache.Client(servers)
+        self.generator = generator
+
+    def run(self):
+        for item in self.generator:
+            self.client.set(self.queue, item)
