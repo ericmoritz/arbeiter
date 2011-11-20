@@ -21,7 +21,7 @@ error handling or parellelism.
     job.run()
 
 This listens for items being pushed into the "input" queue and then forwards
-them to the output queue.
+them to the queue named "output".
 
 To publish a message:
 
@@ -78,8 +78,13 @@ data will be placed back onto the head of the queue.
     def handler(a, data):
         value = int(data) # This could throw a ValueError
 
-If you want to drop the value because it is invalid, simply return a falsey
-value.
+Because the item is placed back on the head of the queue, an error
+like above will cause a chain reaction that causes all the workers to
+crash as they try to process that faulty item.  That'll teach you to
+write error handling code, ay?
+
+If you want to drop the value because it is invalid, simply return a
+falsey value and Arbeiter will tell Kestrel to close the item.
 
     def handler(a, data):
         try:
@@ -89,6 +94,19 @@ value.
            return False
 
         return {"times-two": str(value * 2)}
+
+You could also stuff the value into a special queue if you wanted to 
+write a fix for the error:
+
+    def handler(a, data):
+        try:
+           value = int(data)
+        except ValueError:
+           log.exception("someone set us up the bomb")           
+           return {"times-two-failures": data}
+
+        return {"times-two": str(value * 2)}
+
 
 On the topic of failures; Arbeiter does not assume it knows what you
 want when handling errors.  When bad things happens, Arbeiter lets the
@@ -140,10 +158,9 @@ Another way is to use Python's multiprocessing module:
     for i in range(mp.cpu_count()):
         Process(target=job.run).start()
 
-
 ## Worker pool
 
-Because Arbeiter uses Kestrel is its messaging system.  You can easily
+Because Arbeiter uses Kestrel as its messaging system.  You can easily
 run your job on multiple machines as long as they can reach your Kestrel
 cluster.
 
@@ -155,7 +172,7 @@ cluster.
     worker2:~/ $ python job.py &
     worker3:~/ $ python job.py &
 
-Now from a python prompt, you can push to work into the worker pool:
+Now from a python prompt, you can push work into the worker pool:
 
     localhost:~/ $ python
     >>> from job import job
