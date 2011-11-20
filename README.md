@@ -6,8 +6,9 @@ messaging queue.
 Arbeiter acts as a middleman, it takes an item off an input queue, lets you
 process it and then forwards it onto the zero, one or many outgoing queues.
 
-Arbeiter is unassuming in the fact that it does not assume to know what is
-best for your application in terms of error handling or parellelism.
+Arbeiter is unassuming in the fact that it does not assume to know
+what is best for your application in terms of data serialization,
+error handling or parellelism.
 
 ## Usage
 
@@ -22,9 +23,12 @@ best for your application in terms of error handling or parellelism.
 This listens for items being pushed into the "input" queue and then forwards
 them to the output queue.
 
-To publish an item into the queue:
+To publish a message:
 
     job.push("Hello, World!")
+
+Arbeiter does not assume it knows what format is best for you, so it only 
+uses bytes.
 
 ## handler(a, data)
 
@@ -44,7 +48,7 @@ will send that data to those channels.
         return [("words", word) for word in words]
 
 If the data your handler is publishing is time consuming or memory intensive,
-you can use a generator to pushlish the data as soon as it is ready:
+you can use a generator to publish the data as soon as it is ready:
 
     def handler(a, key_list):
        key_list = key_list.spilt(",")
@@ -65,6 +69,7 @@ If the handler returns a falsey value, it acts as a sink:
         db.store(data['key'], data)
 
 
+
 ### Fail
 
 If something goes wrong with the handler and it throws an error, the
@@ -83,7 +88,7 @@ value.
            log.exception("someone set us up the bomb")
            return False
 
-        return {"timed-two": str(value * 2)}
+        return {"times-two": str(value * 2)}
 
 On the topic of failures; Arbeiter does not assume it knows what you
 want when handling errors.  When bad things happens, Arbeiter lets the
@@ -92,7 +97,6 @@ exception raise.
 This means that if you do not handle your exceptions, your worker
 process will die a painful death.  This may be what you want or it may
 not; but you should know that Arbeiter treats you like an adult.
-
 
 Hint: you may want to do something like this to keep things running:
 
@@ -128,7 +132,6 @@ From bash:
     $ python job.py &
     $ python job.py &
 
-
 Another way is to use Python's multiprocessing module:
 
     from job import job
@@ -136,6 +139,7 @@ Another way is to use Python's multiprocessing module:
 
     for i in range(mp.cpu_count()):
         Process(target=job.run).start()
+
 
 ## Worker pool
 
