@@ -184,4 +184,4 @@ Now from a python prompt, you can push work into the worker pool:
 
 ## Conclusion
 
-There you have it, a really simple real time worker queue system.
+There you have it, I hope you like it.
