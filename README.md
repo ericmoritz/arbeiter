@@ -1,8 +1,13 @@
 # Arbeiter
 
-Arbeiter is a really simple worker queue system that using Kestrel as
-the messaging system.
+Arbeiter is an unassuming worker queue system that uses Kestrel as the
+messaging queue.
 
+Arbeiter acts as a middleman, it takes an item off an input queue, lets you
+process it and then forwards it onto the zero, one or many outgoing queues.
+
+Arbeiter is unassuming in the fact that it does not assume to know what is
+best for your application in terms of error handling or parellelism.
 
 ## Usage
 
@@ -14,9 +19,12 @@ the messaging system.
     job = Arbeiter(["127.0.0.1:22133"], "input", handler)
     job.run()
 
-This is as simple as it gets.  We set up a data handler for the input queue.
+This listens for items being pushed into the "input" queue and then forwards
+them to the output queue.
 
-All the handler does is stuff the data into the "output" queue.
+To publish an item into the queue:
+
+    job.push("Hello, World!")
 
 ## handler(a, data)
 
@@ -59,7 +67,7 @@ If the handler returns a falsey value, it acts as a sink:
 
 ### Fail
 
-If something goes wrong with the sink and it throws an error, the
+If something goes wrong with the handler and it throws an error, the
 data will be placed back onto the head of the queue.
 
     def handler(a, data):
@@ -76,6 +84,25 @@ value.
            return False
 
         return {"timed-two": str(value * 2)}
+
+On the topic of failures; Arbeiter does not assume it knows what you
+want when handling errors.  When bad things happens, Arbeiter lets the
+exception raise.
+
+This means that if you do not handle your exceptions, your worker
+process will die a painful death.  This may be what you want or it may
+not; but you should know that Arbeiter treats you like an adult.
+
+
+Hint: you may want to do something like this to keep things running:
+
+    while True:
+        try:
+            job = Arbeiter(["127.0.0.1:22133"], "in", myhandler)
+            job.run()
+        except:
+            log.exception("Well, damn, let's try that again.")
+    
 
 ## Parellelism
 
