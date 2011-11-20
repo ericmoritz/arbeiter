@@ -1,6 +1,6 @@
 import memcache
 
-class Arbeiter(object):
+class Job(object):
 
     def __init__(self, servers, input_queue, handler, default_timeout=30000):
         self.servers = servers

@@ -12,12 +12,12 @@ error handling or parellelism.
 
 ## Usage
 
-    from arbeiter import Arbeiter
+    from arbeiter import Job
     
-    def handler(a, data):
+    def handler(job, data):
         return {"output": data}
 
-    job = Arbeiter(["127.0.0.1:22133"], "input", handler)
+    job = Job(["127.0.0.1:22133"], "input", handler)
     job.run()
 
 This listens for items being pushed into the "input" queue and then forwards
@@ -40,17 +40,17 @@ The handler can do a three things: send data to queues, act as a sink, or fail.
 If the handler returns a dict or a list of (channel, data) pairs.  Arbeiter
 will send that data to those channels.
 
-    def handler(a, data):
+    def handler(job, data):
         return {"channel-1": data}
 
-    def spit_words(a, data):
+    def spit_words(job, data):
         words = data.split(" ")
         return [("words", word) for word in words]
 
 If the data your handler is publishing is time consuming or memory intensive,
 you can use a generator to publish the data as soon as it is ready:
 
-    def handler(a, key_list):
+    def handler(job, key_list):
        key_list = key_list.spilt(",")
 
        def datagen():
@@ -64,7 +64,7 @@ you can use a generator to publish the data as soon as it is ready:
 
 If the handler returns a falsey value, it acts as a sink:
 
-    def handler(a, data):
+    def handler(job, data):
         data = json.loads(data)
         db.store(data['key'], data)
 
@@ -75,7 +75,7 @@ If the handler returns a falsey value, it acts as a sink:
 If something goes wrong with the handler and it throws an error, the
 data will be placed back onto the head of the queue.
 
-    def handler(a, data):
+    def handler(job, data):
         value = int(data) # This could throw a ValueError
 
 Because the item is placed back on the head of the queue, an error
@@ -86,7 +86,7 @@ write error handling code, ay?
 If you want to drop the value because it is invalid, simply return a
 falsey value and Arbeiter will tell Kestrel to close the item.
 
-    def handler(a, data):
+    def handler(job, data):
         try:
            value = int(data)
         except ValueError:
@@ -98,7 +98,7 @@ falsey value and Arbeiter will tell Kestrel to close the item.
 You could also stuff the value into a special queue if you wanted to 
 write a fix for the error:
 
-    def handler(a, data):
+    def handler(job, data):
         try:
            value = int(data)
         except ValueError:
@@ -120,7 +120,7 @@ Hint: you may want to do something like this to keep things running:
 
     while True:
         try:
-            job = Arbeiter(["127.0.0.1:22133"], "in", myhandler)
+            job = Job(["127.0.0.1:22133"], "in", myhandler)
             job.run()
         except:
             log.exception("Well, damn, let's try that again.")
@@ -139,7 +139,7 @@ of the same job:
         result = dosomething_cpu_intensive(data)
         return {"out": result}
 
-    job = Arbeiter(["127.0.0.1:22133"], "in", some_cpu_bound_handler)
+    job = Job(["127.0.0.1:22133"], "in", some_cpu_bound_handler)
     
     if __name__ == '__main__':
        job.start()
