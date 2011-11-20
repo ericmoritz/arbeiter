@@ -4,7 +4,7 @@ Arbeiter is an unassuming worker queue system that uses Kestrel as the
 messaging queue.
 
 Arbeiter acts as a middleman, it takes an item off an input queue, lets you
-process it and then forwards it onto the zero, one or many outgoing queues.
+process it and then forwards it on to zero, one or many outgoing queues.
 
 Arbeiter is unassuming in the fact that it does not assume to know
 what is best for your application in terms of data serialization,
