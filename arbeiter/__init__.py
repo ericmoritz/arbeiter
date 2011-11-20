@@ -2,7 +2,7 @@ import memcache
 
 class Arbeiter(object):
 
-    def __init__(self, servers, input_queue, handler, default_timeout=100):
+    def __init__(self, servers, input_queue, handler, default_timeout=30000):
         self.servers = servers
         self.input_queue = input_queue
         self.handler = handler
@@ -31,20 +31,37 @@ class Arbeiter(object):
 
         return self.client.get(queue)
 
+    def peek(self, queue, timeout=None):
+        queue += "/peek"
+
+        if timeout is not None:
+            queue += "/t=%d" % (timeout, )
+
+        return self.client.get(queue)
+
+
     def consume(self, queue=None):
         queue = queue or self.input_queue
         self.client.get(queue + "/close")
         
+    def abort(self, queue=None):
+        queue = queue or self.input_queue
+        self.client.get(queue + "/abort")
+
     def handle_one(self, timeout=None):
         timeout = timeout or self.default_timeout
 
         data = self.get(self.input_queue, timeout=timeout, durable=True)
 
         if data: 
-            result = self.handler(self, data)
-            if result:
-                for queue, value in result.items():
-                    self.push(value, queue=queue)
+            try:
+                result = self.handler(self, data)
+                if result:
+                    for queue, value in result.items():
+                        self.push(value, queue=queue)
+            except:
+                self.abort()
+                raise
 
             # Nothing bad happend, consume the data
             self.consume()
