@@ -1,13 +1,22 @@
 import memcache
 
+
+class RetryLimitExceeded(Exception):
+    pass
+
+
 class Job(object):
 
-    def __init__(self, servers, input_queue, handler, default_timeout=30000):
+    def __init__(self, servers, input_queue, handler,
+                 default_timeout=1000,
+                 retry_limit=3):
+
         self.servers = servers
         self.input_queue = input_queue
         self.handler = handler
-        self.client = memcache.Client(servers)
+        self.client = memcache.Client(servers, debug=1)
         self.default_timeout = default_timeout
+        self.retry_limit = retry_limit
 
     def flush(self, queue=None):
         queue = queue or self.input_queue
@@ -18,9 +27,17 @@ class Job(object):
             s.expect("OK")
         
     def push(self, data, queue=None):
-        queue = queue or self.input_queue
+        queue       = queue or self.input_queue
+        retry_limit = self.retry_limit
+        client      = self.client
 
-        self.client.set(queue, data)
+        for i in range(retry_limit):
+            result = client.set(queue, data)
+        
+            if result:
+                return result
+
+        raise RetryLimitExceeded()
 
     def get(self, queue, timeout=None, durable=False):
         if timeout is not None:
@@ -72,12 +89,28 @@ class Job(object):
 
 
 class Spout(object):
-    def __init__(self, servers, queue, generator):
-        self.servers   = servers
-        self.queue     = queue
-        self.client    = memcache.Client(servers)
-        self.generator = generator
+    def __init__(self, servers, queue, generator, retry_limit=3):
+        self.servers     = servers
+        self.queue       = queue
+        self.client      = memcache.Client(servers, debug=1)
+        self.generator   = generator
+        self.retry_limit = retry_limit
 
     def run(self):
-        for item in self.generator:
-            self.client.set(self.queue, item)
+        queue       = self.queue
+        client      = self.client
+        retry_limit = self.retry_limit
+
+        for data in self.generator:
+            result = False
+
+            for i in range(retry_limit):
+                result = client.set(queue, data)
+                
+                if result:
+                    break
+
+            if not result:
+                raise RetryLimitExceeded()
+            
+
