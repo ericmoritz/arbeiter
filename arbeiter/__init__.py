@@ -1,8 +1,28 @@
+from kestrel import client as kestrel
 import memcache
+import types
+import random
 
 
 class RetryLimitExceeded(Exception):
     pass
+
+
+class Client(kestrel.KestrelMemcacheClient):
+    def _get_server(self, key):
+        if type(key) == types.TupleType:
+            serverhash, key = key
+        else:
+            serverhash = random.randint(0, len(self.buckets))
+
+        for i in range(memcache.Client._SERVER_RETRIES):
+            server = self.buckets[serverhash % len(self.buckets)]
+            if server.connect():
+                #print "(using server %s)" % server,
+                return server, key
+            serverhash = random.randint(0, len(self.buckets))
+        return None, None
+    
 
 
 class Job(object):
@@ -14,7 +34,7 @@ class Job(object):
         self.servers = servers
         self.input_queue = input_queue
         self.handler = handler
-        self.client = memcache.Client(servers, debug=1)
+        self.client = Client(servers)
         self.default_timeout = default_timeout
         self.retry_limit = retry_limit
 
@@ -92,7 +112,7 @@ class Spout(object):
     def __init__(self, servers, queue, generator, retry_limit=3):
         self.servers     = servers
         self.queue       = queue
-        self.client      = memcache.Client(servers, debug=1)
+        self.client      = Client(servers)
         self.generator   = generator
         self.retry_limit = retry_limit
 
