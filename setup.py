@@ -19,7 +19,7 @@ A work queue system built using Kestrel""",
       zip_safe=False,
       install_requires=[
           # -*- Extra requirements: -*-
-        "memcache",
+        "pykestrel",
       ],
       entry_points="""
       # -*- Entry points: -*-
