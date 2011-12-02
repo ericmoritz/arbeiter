@@ -2,6 +2,7 @@ from arbeiter import Job, Spout
 from datetime import datetime
 import time
 
+
 def tick_to_iso8601(a, data):
     # Convert tick string to seconds
     seconds = float(data)
